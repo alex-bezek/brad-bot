@@ -3,6 +3,9 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io/fs"
+	"io/ioutil"
+	"log"
 	"os"
 	"os/signal"
 	"strings"
@@ -34,11 +37,7 @@ func init() {
 }
 
 func main() {
-
 	// runtime.GOMAXPROCS(conf.MaxProc)
-
-	// log.Info("/*********BOT RESTARTING*********\\")
-
 	// Create a new Discord session using the provided bot token.
 	dg, err := discordgo.New("Bot " + Token)
 	if err != nil {
@@ -74,134 +73,113 @@ func main() {
 // This function will be called (due to AddHandler above) every time a new
 // message is created on any channel that the authenticated bot has access to.
 func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
-	// TODO: Add prefix check
-
 	// Ignore all messages created by the bot itself
 	// This isn't required in this specific example but it's a good practice.
 	if m.Author.ID == s.State.User.ID {
 		return
 	}
+	fmt.Printf("Got message: %s \n From: %s\n", m.Content, m.Author.Username)
+
 	if strings.Contains(m.Content, "pixie") && strings.Contains(m.Content, "stick") {
 		s.ChannelMessageSend(m.ChannelID, "https://giphy.com/gifs/range-of-emotions-cotton-candy-girl-safeco-field-foodie-3o6Ztg2MgUkcXyCgtG")
 	}
 
-	if m.Content == "battle" {
-		// squad := [5]string{"Furus", "Galia", "Adalia", "Carindrina", "Belladona"}
-		message, err := s.ChannelMessageSendEmbed(m.ChannelID, embed())
-		if err != nil {
-			fmt.Println(err)
-		}
-		err = s.MessageReactionAdd(m.ChannelID, message.ID, "🤠")
-		if err != nil {
-			fmt.Println(err)
-		}
-		err = s.MessageReactionAdd(m.ChannelID, message.ID, "🦊")
-		if err != nil {
-			fmt.Println(err)
-		}
-		err = s.MessageReactionAdd(m.ChannelID, message.ID, "🐈‍⬛")
-		if err != nil {
-			fmt.Println(err)
-		}
-		err = s.MessageReactionAdd(m.ChannelID, message.ID, "🐉")
-		if err != nil {
-			fmt.Println(err)
-		}
-		err = s.MessageReactionAdd(m.ChannelID, message.ID, "🏹")
-		if err != nil {
-			fmt.Println(err)
-		}
-		err = s.MessageReactionAdd(m.ChannelID, message.ID, "🌊")
-		if err != nil {
-			fmt.Println(err)
-		}
-		err = s.MessageReactionAdd(m.ChannelID, message.ID, "⛏️")
-		if err != nil {
-			fmt.Println(err)
-		}
-		err = s.MessageReactionAdd(m.ChannelID, message.ID, "👼")
-		if err != nil {
-			fmt.Println(err)
-		}
-		err = s.MessageReactionAdd(m.ChannelID, message.ID, "😻")
-		if err != nil {
-			fmt.Println(err)
-		}
-		err = s.MessageReactionAdd(m.ChannelID, message.ID, "🐆")
-		if err != nil {
-			fmt.Println(err)
-		}
-		err = s.MessageReactionAdd(m.ChannelID, message.ID, "😇")
-		if err != nil {
-			fmt.Println(err)
-		}
-		err = s.MessageReactionAdd(m.ChannelID, message.ID, "🦡")
-		if err != nil {
-			fmt.Println(err)
-		}
-		err = s.MessageReactionAdd(m.ChannelID, message.ID, "😺")
-		if err != nil {
-			fmt.Println(err)
-		}
-		// Clear current state for new battle
-		// for _, p := range squad {
-		// 	s.ChannelMessageSend(m.ChannelID, p)
-		// 	// Add each number emoji to player
-		// 	// "⏺1️⃣1️⃣2️⃣2️⃣3️⃣3️⃣4️⃣4️⃣"
-		// }
-		// func (s *Session) MessageReactionAdd(channelID, messageID, emojiID string) error {
+	spellCmd := fmt.Sprintf("<@!%s> spell ", s.State.User.ID)
 
-		// s.ChannelMessageSend(m.ChannelID, "Ping!")
+	if strings.HasPrefix(m.Content, spellCmd) {
+		spell := strings.ReplaceAll(m.Content, spellCmd, "")
+
+		files, err := ioutil.ReadDir("./spells")
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		var spellFile fs.FileInfo
+
+	FileLoop:
+		for _, f := range files {
+			sellFileName := strings.ToLower(f.Name())
+			for _, t := range strings.Split(spell, " ") {
+				if !strings.Contains(sellFileName, t) {
+					continue FileLoop
+				}
+			}
+			spellFile = f
+			break
+		}
+
+		if spellFile == nil {
+			s.ChannelMessageSend(m.ChannelID, "Spell not found")
+		} else {
+			fmt.Println(spellFile.Name())
+			f, err := os.Open("./spells/" + spellFile.Name())
+			if err != nil {
+				panic(err)
+			}
+			defer f.Close()
+
+			s.ChannelFileSend(m.ChannelID, spellFile.Name(), f)
+		}
 	}
-}
 
-// :cowboy: Furus
-// :fox: Galia
-// :black_cat:  venus
-// :dragon_face:  midna
-// :bow_and_arrow:  belladonna's
-// :ocean:  adalia
-// :axe:  Carindrina
-// :angel:  nira
-// :heart_eyes_cat:  juniper
-// :leopard:  aquilla
-// :innocent: nira
-// :badger:   scamander
-// :smiley_cat:  Perry
+	reactCmd := fmt.Sprintf("<@!%s> react ", s.State.User.ID)
+	if strings.HasPrefix(m.Content, reactCmd) {
+		fmt.Printf("Got reaction command from %s", m.Author.Username)
+		react := strings.ReplaceAll(m.Content, reactCmd, "")
+		characters := map[string]string{
+			"Kenzie":          "Adalia",
+			"twylawolf":       "Balladonna",
+			"silvershoes":     "Carindrina",
+			"furus":           "Furus",
+			"kittythewildcat": "Galia",
+			"Alicia":          "Midna",
+			"wolfswing":       "Nira",
+			"gettingvetted":   "Venus",
+		}
 
-// Options:
-// * 1 post per person which then has all the numbers as reactions below each person. Clicking a reaction number registers them as that number. Ugly, spammy, might be harder to code since they are all separate messages
-// * 1 embed, have a specific icon reaction for each player. Clicking each one places them in that order. Might be confusing/hard to know which icon is for which person
-// * 1 embed, uses the next/previous paradigm to cycle though each player. Clicking the check reaction then puts that player next in the order
-// Uses arrows https://www.reddit.com/r/Discord_Bots/comments/ah4rqr/help_with_an_embed_reaction_menu/
+		emotion := map[string]string{
+			"angry":      "Angry",
+			"confused":   "Confused",
+			"dead":       "Dead",
+			"got it":     "Figured it out",
+			"initiative": "Game on",
+			"happy":      "Happy",
+			"innocent":   "Innocent",
+			"inspired":   "Inspired",
+			"love":       "Love",
+			"ugh":        "Nauseous",
+			"nope":       "Oh fuck",
+			"sad":        "Sad",
+			"star":       "Star",
+		}
 
-// https://github.com/jmsheff/discord-checkers
-// https://github.com/bwmarrin/discordgo
-// https://github.com/Necroforger/dgwidgets (might be useful for the third option)
+		if react == "help" {
+			keys := make([]string, len(emotion))
 
-func embed() *discordgo.MessageEmbed {
-	return &discordgo.MessageEmbed{
-		URL:         "",
-		Type:        "",
-		Title:       "Lets Fight!",
-		Description: "Roll initiatives!",
-		Timestamp:   "",
-		Color:       3447003,
-		// Image:       &discordgo.MessageEmbedImage{},
-		// Thumbnail:   &discordgo.MessageEmbedThumbnail{},
-		Fields: []*discordgo.MessageEmbedField{
-			{
-				Name:  "Players",
-				Value: "The player names \n more names? :one: \\:one:",
-			},
-			{
-				Name:  "Next",
-				Value: "Next icon",
-			},
-		},
-		Footer: &discordgo.MessageEmbedFooter{
-			Text: "test footer text",
-			// IconURL:      "",
-		},
+			i := 0
+			for k := range emotion {
+				keys[i] = k
+				i++
+			}
+			s.ChannelMessageSend(m.ChannelID, "React with one of the following: "+strings.Join(keys, ", "))
+			return
+		}
+
+		c := characters[m.Author.Username]
+		e := emotion[react]
+		if c == "" || e == "" {
+			fmt.Printf("Did not find character emotion for %s %s \n", m.Author.Username, react)
+		} else {
+			fileName := c + " " + e + ".PNG"
+			f, err := os.Open("./avatars/Reactions/" + fileName)
+			if err != nil {
+				panic(err)
+			}
+			defer f.Close()
+
+			s.ChannelFileSend(m.ChannelID, fileName, f)
+			s.ChannelMessageSend(m.ChannelID, fmt.Sprintf("%s %s", c, e))
+		}
+
 	}
 }
