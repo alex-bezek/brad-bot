@@ -204,4 +204,6 @@ func embed() *discordgo.MessageEmbed {
 			// IconURL:      "",
 		},
 	}
-}
+} 
+
+
