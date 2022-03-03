@@ -98,9 +98,9 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 
 	FileLoop:
 		for _, f := range files {
-			sellFileName := strings.ToLower(f.Name())
+			spellFileName := strings.ToLower(f.Name())
 			for _, t := range strings.Split(spell, " ") {
-				if !strings.Contains(sellFileName, t) {
+				if !strings.Contains(spellFileName, strings.ToLower(t)) {
 					continue FileLoop
 				}
 			}
